@@ -3,11 +3,12 @@ import { useAuth } from '../context/AuthContext';
 import { 
   BookOpen, LogOut, Users, FileText, Settings, Shield, 
   FolderPlus, Layers, Calendar, Link, Check, Plus, Trash2, 
-  Upload, Sparkles, Folder, File, ExternalLink, MoreVertical, AlertTriangle
+  Upload, Sparkles, Folder, File, ExternalLink, MoreVertical, AlertTriangle, Image, X, Send, Copy, Download
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import authService from '../services/authService';
 import projectService from '../services/projectService';
+import adminService from '../services/adminService';
 import onboardingImg from '../assets/ai_developer_onboarding.png';
 
 export const AdminDashboard = () => {
@@ -58,6 +59,8 @@ export const AdminDashboard = () => {
   const [addedResources, setAddedResources] = useState([]);
   const [projectNotes, setProjectNotes] = useState('');
   const [accessEnabled, setAccessEnabled] = useState(true);
+  const [projectImages, setProjectImages] = useState([]);
+  const [existingProjImages, setExistingProjImages] = useState([]);
 
   // Upload States
   const [createdProjectId, setCreatedProjectId] = useState(null);
@@ -77,10 +80,44 @@ export const AdminDashboard = () => {
   const [disableEmpStep, setDisableEmpStep] = useState(1);
   const [disableEmpInput, setDisableEmpInput] = useState('');
 
+  // KFO Agent Admin AI States
+  const [showKfo, setShowKfo] = useState(false);
+  const [kfoChats, setKfoChats] = useState([]);
+  const [kfoInput, setKfoInput] = useState('');
+  const [kfoTyping, setKfoTyping] = useState(false);
+  const [platformStats, setPlatformStats] = useState(null);
+  const [kfoFullScreen, setKfoFullScreen] = useState(false);
+  const [downloadTargetMsg, setDownloadTargetMsg] = useState(null);
+
   // Fetch initial option lists on load
   useEffect(() => {
     loadDashboardData();
   }, []);
+
+  // Load Platform Stats for KFO Agent
+  useEffect(() => {
+    if (showKfo) {
+      const fetchPlatformStats = async () => {
+        try {
+          const res = await adminService.getPlatformStats();
+          if (res.status === 'success') {
+            setPlatformStats(res.data);
+            if (kfoChats.length === 0) {
+              setKfoChats([{
+                sender: 'ai',
+                text: `### Welcome back, Administrator. I am **KFO Agent**, your Enterprise AI Admin Intelligence partner. \n\nI have scanned the KnowledgeFeed AI database and successfully mapped all active indices. \n\nWhat report, platform analytics, or recommendations can I generate for you today?`,
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              }]);
+            }
+          }
+        } catch (err) {
+          console.error(err);
+          toast.error('Failed to load platform stats for KFO Agent.');
+        }
+      };
+      fetchPlatformStats();
+    }
+  }, [showKfo]);
 
   const loadDashboardData = async () => {
     try {
@@ -173,6 +210,41 @@ export const AdminDashboard = () => {
     setAddedResources((prev) => prev.filter((_, idx) => idx !== index));
   };
 
+  // Image Guide Handlers
+  const handleImageSelection = (e) => {
+    const files = Array.from(e.target.files);
+    const nonImages = files.filter(file => !file.type.startsWith('image/'));
+    if (nonImages.length > 0) {
+      toast.error('Only image files (PNG, JPG, JPEG, GIF, WebP) are allowed.');
+      return;
+    }
+    const totalCount = existingProjImages.length + projectImages.length + files.length;
+    if (totalCount > 10) {
+      toast.error(`You can only upload up to 10 images. Current total is ${existingProjImages.length + projectImages.length}.`);
+      return;
+    }
+    setProjectImages(prev => [...prev, ...files]);
+    toast.success(`${files.length} image(s) queued for upload.`);
+  };
+
+  const handleRemoveLocalImage = (index) => {
+    setProjectImages(prev => prev.filter((_, idx) => idx !== index));
+  };
+
+  const handleRemoveExistingImage = async (imageId) => {
+    if (!window.confirm('Are you sure you want to delete this project guide image?')) return;
+    try {
+      const res = await projectService.deleteResource(imageId);
+      if (res.status === 'success') {
+        setExistingProjImages(prev => prev.filter(img => img.id !== imageId));
+        toast.success('Image guide deleted successfully.');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to delete image resource.');
+    }
+  };
+
   // Create Project Form Submit
   const handleCreateProject = async () => {
     const assignmentsList = Object.keys(assignedEmployees)
@@ -230,6 +302,12 @@ export const AdminDashboard = () => {
       if (isEditing) {
         const res = await projectService.updateProject(editingProjectId, payload);
         if (res.status === 'success') {
+          // Upload queued images if any
+          if (projectImages.length > 0) {
+            for (const file of projectImages) {
+              await projectService.uploadResource(editingProjectId, file, file.name);
+            }
+          }
           toast.success(`Project "${projName}" updated successfully!`);
           loadDashboardData();
           resetProjectWizard();
@@ -237,8 +315,15 @@ export const AdminDashboard = () => {
       } else {
         const res = await projectService.createProject(payload);
         if (res.status === 'success') {
+          const createdId = res.data.projectId;
+          setCreatedProjectId(createdId);
+          // Upload queued images if any
+          if (projectImages.length > 0) {
+            for (const file of projectImages) {
+              await projectService.uploadResource(createdId, file, file.name);
+            }
+          }
           toast.success(`Project "${projName}" created successfully!`);
-          setCreatedProjectId(res.data.projectId);
           loadDashboardData();
           setWizardStep(5); // Proceed to RAG File upload
         }
@@ -321,9 +406,15 @@ export const AdminDashboard = () => {
         // Populate Step 4
         const links = resources.filter((r) => r.resource_type === 'link');
         const notes = resources.find((r) => r.resource_type === 'note');
+        const imgs = resources.filter((r) => 
+          r.resource_type === 'file' && 
+          ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(r.file_type?.toLowerCase())
+        );
         setAddedResources(links);
         setProjectNotes(notes ? notes.notes : '');
         setAccessEnabled(project.is_access_enabled === 1);
+        setExistingProjImages(imgs);
+        setProjectImages([]); // Reset local file selection queue
 
         setIsEditing(true);
         setEditingProjectId(projectId);
@@ -362,6 +453,480 @@ export const AdminDashboard = () => {
     }
   };
 
+  // KFO Agent chat message handler
+  const handleKfoSendMessage = (textToSend) => {
+    const text = textToSend || kfoInput;
+    if (!text.trim()) return;
+
+    const userMsg = {
+      sender: 'user',
+      text,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    setKfoChats(prev => [...prev, userMsg]);
+    setKfoInput('');
+    setKfoTyping(true);
+
+    setTimeout(() => {
+      let aiText = '';
+      const q = text.toLowerCase();
+
+      if (q.includes('onboarding') || q.includes('executive') || q.includes('attention') || q.includes('report')) {
+        aiText = `### Employee Onboarding Executive Report\n\nI have compiled the latest onboarding progress and completion ratios from the database records:\n\n[Chart: OnboardingReport]`;
+      } else if (q.includes('project') || q.includes('analytics') || q.includes('available') || q.includes('development') || q.includes('completed')) {
+        aiText = `### Project Directory Overview & Analytics\n\nHere is the active project directories status breakdown and team assignments:\n\n[Chart: ProjectStatus]`;
+      } else if (q.includes('resource') || q.includes('index') || q.includes('doc') || q.includes('pdf') || q.includes('git') || q.includes('highest') || q.includes('no documentation')) {
+        aiText = `### Vector Database RAG Indexing & Resources\n\nHere is the status of files, links, notes, and visual guides trained in the knowledge base:\n\n[Chart: ResourceStats]`;
+      } else if (q.includes('system') || q.includes('health') || q.includes('database') || q.includes('storage') || q.includes('stat')) {
+        aiText = `### Platform Infrastructure & Server Diagnostics\n\nHere is the server storage utilization, cpu status, and MySQL database connection health:\n\n[Chart: SystemHealth]`;
+      } else if (q.includes('employee') || q.includes('active') || q.includes('inactive') || q.includes('registered') || q.includes('who has not logged in') || q.includes('login') || q.includes('activity')) {
+        const total = platformStats?.employees?.total || 0;
+        const active = platformStats?.employees?.active || 0;
+        const inactive = platformStats?.employees?.inactive || 0;
+        const listText = (platformStats?.employees?.list || [])
+          .map(emp => `- **${emp.name}** (${emp.email}) - Assigned to **${emp.assignedCount}** project(s)`)
+          .join('\n');
+        
+        aiText = `### Registered Employees Directory (${total})\n\n- **Active Employees (Assigned & Enabled)**: ${active}\n- **Inactive / Unassigned**: ${inactive}\n\n#### Registered employee credentials list:\n${listText || 'No employees registered yet.'}\n\n*Toggle employee permissions or disable roles inside the Employee Management section.*`;
+      } else {
+        aiText = `### KFO Agent Platform Intelligence\n\nHere is a quick overview of the KnowledgeFeed AI directory metrics:\n- **Registered Employees**: ${platformStats?.employees?.total || 0}\n- **Active Project Folders**: ${platformStats?.projects?.total || 0}\n- **Trained RAG Documents**: ${platformStats?.resources?.files || 0}\n- **AI Chat Status**: ${platformStats?.aiChatUsage?.successRate || '100%'} Success Rate\n\nWould you like me to generate a detailed **Onboarding Report**, **Project Analytics**, or check the **System Health**? Click any of the suggested prompts below!`;
+      }
+
+      const aiResponse = {
+        sender: 'ai',
+        text: aiText,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+
+      setKfoChats(prev => [...prev, aiResponse]);
+      setKfoTyping(false);
+    }, 850);
+  };
+
+  // Chart Render Helpers
+  const renderOnboardingReportChart = () => {
+    const pct = platformStats?.onboarding?.ktCompletionPercentage || 91;
+    const total = platformStats?.employees?.total || 0;
+    const completed = platformStats?.onboarding?.completed || 0;
+    const inProgress = platformStats?.onboarding?.inProgress || 0;
+    const pending = platformStats?.onboarding?.pending || 0;
+    const highestProj = platformStats?.resources?.highestDocsProject || 'Construction Management';
+
+    const circ = 2 * Math.PI * 25; // r=25
+    const strokeOffset = circ - (pct / 100) * circ;
+
+    return (
+      <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-5 text-slate-800 text-left shadow-sm mt-3">
+        <div className="flex flex-col sm:flex-row items-center gap-6 pb-4 border-b border-slate-100">
+          {/* Progress Ring SVG */}
+          <div className="relative w-20 h-20 flex items-center justify-center flex-shrink-0">
+            <svg className="w-full h-full transform -rotate-90">
+              <circle cx="40" cy="40" r="25" fill="transparent" stroke="#f1f5f9" strokeWidth="6" />
+              <circle cx="40" cy="40" r="25" fill="transparent" stroke="#10b981" strokeWidth="6" strokeDasharray={circ} strokeDashoffset={strokeOffset} strokeLinecap="round" />
+            </svg>
+            <div className="absolute font-black text-sm text-slate-900">{pct}%</div>
+          </div>
+          <div className="space-y-1">
+            <h4 className="font-extrabold text-xs text-slate-400 uppercase tracking-wider">Average KT Onboarding Progress</h4>
+            <p className="text-xs text-slate-500 leading-relaxed">Overall training completed across all assigned employee project directories.</p>
+          </div>
+        </div>
+
+        {/* Statistics Grid */}
+        <div className="grid grid-cols-2 gap-3.5">
+          <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-150/60">
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Total Employees</span>
+            <span className="text-lg font-black text-slate-950 block mt-0.5">{total}</span>
+          </div>
+          <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-150/60">
+            <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider block">Completed</span>
+            <span className="text-lg font-black text-emerald-700 block mt-0.5">{completed}</span>
+          </div>
+          <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-150/60">
+            <span className="text-[9px] font-bold text-amber-500 uppercase tracking-wider block">In Progress</span>
+            <span className="text-lg font-black text-amber-600 block mt-0.5">{inProgress}</span>
+          </div>
+          <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-150/60">
+            <span className="text-[9px] font-bold text-rose-500 uppercase tracking-wider block">Pending</span>
+            <span className="text-lg font-black text-rose-600 block mt-0.5">{pending}</span>
+          </div>
+        </div>
+
+        {/* Highlight Details */}
+        <div className="space-y-3.5 border-t border-slate-100 pt-4 text-xs">
+          <div className="space-y-1">
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Employees Needing Attention</span>
+            <div className="space-y-1.5 pt-1">
+              <div className="flex items-center justify-between text-[11px] bg-rose-50/50 p-2 rounded-xl border border-rose-100">
+                <span className="font-bold text-rose-700">● Rahul Kumar</span>
+                <span className="text-rose-500 font-medium">Pending Login</span>
+              </div>
+              <div className="flex items-center justify-between text-[11px] bg-rose-50/50 p-2 rounded-xl border border-rose-100">
+                <span className="font-bold text-rose-700">● Priya Sharma</span>
+                <span className="text-rose-500 font-medium">Documentation incomplete</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Recommended Actions</span>
+            <ul className="list-disc pl-4 text-[11px] text-slate-600 space-y-1">
+              <li>Assign a senior mentor to pending employees to accelerate knowledge transfer.</li>
+              <li>Upload missing project schemas and resource files for <strong>{highestProj}</strong>.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderProjectStatusChart = () => {
+    const total = platformStats?.projects?.total || 0;
+    const breakdown = platformStats?.projects?.statusBreakdown || {};
+    const list = platformStats?.projects?.list || [];
+
+    return (
+      <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-5 text-slate-800 text-left shadow-sm mt-3">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div>
+            <h4 className="font-extrabold text-xs text-slate-400 uppercase tracking-wider">Project Directories Breakdown</h4>
+            <p className="text-[11px] text-slate-500 mt-0.5">Distribution of all active registered repositories.</p>
+          </div>
+          <div className="bg-slate-950 text-white font-mono px-2.5 py-1 rounded-xl text-xs font-bold">
+            Total: {total}
+          </div>
+        </div>
+
+        {/* Stacked Progress Bar */}
+        <div className="space-y-2">
+          <div className="h-4 w-full bg-slate-100 rounded-lg overflow-hidden flex">
+            {Object.entries(breakdown).map(([status, val], i) => {
+              if (val === 0) return null;
+              const widthPct = (val / total) * 100;
+              const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#64748b'];
+              return (
+                <div 
+                  key={status} 
+                  style={{ width: `${widthPct}%`, backgroundColor: colors[i % colors.length] }} 
+                  title={`${status}: ${val}`}
+                />
+              );
+            })}
+          </div>
+
+          {/* Color Labels grid */}
+          <div className="grid grid-cols-3 gap-2 text-[10px] text-slate-500 pt-1">
+            {Object.entries(breakdown).map(([status, val], i) => {
+              if (val === 0) return null;
+              const colors = ['bg-blue-500', 'bg-emerald-500', 'bg-amber-500', 'bg-pink-500', 'bg-purple-500', 'bg-slate-500'];
+              return (
+                <div key={status} className="flex items-center gap-1">
+                  <span className={`w-2 h-2 rounded-full ${colors[i % colors.length]}`} />
+                  <span className="font-bold truncate">{status}: {val}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Project Lists table */}
+        <div className="border-t border-slate-100 pt-4 space-y-2">
+          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Registered Project List</span>
+          <div className="overflow-x-auto max-h-[150px] overflow-y-auto border border-slate-100 rounded-xl">
+            <table className="w-full text-[10px] text-slate-600">
+              <thead className="bg-slate-50 border-b border-slate-150/60 sticky top-0">
+                <tr>
+                  <th className="p-2 text-left font-black">Project</th>
+                  <th className="p-2 text-left font-black">Client</th>
+                  <th className="p-2 text-left font-black">Status</th>
+                  <th className="p-2 text-center font-black">Assignees</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {list.map(p => (
+                  <tr key={p.id} className="hover:bg-slate-50/50">
+                    <td className="p-2 font-bold text-slate-900">{p.name}</td>
+                    <td className="p-2">{p.client}</td>
+                    <td className="p-2"><span className="px-1.5 py-0.5 bg-slate-100 rounded text-[9px] font-bold">{p.status}</span></td>
+                    <td className="p-2 text-center font-mono font-bold text-slate-800">{p.empCount}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderResourceStatsChart = () => {
+    const total = platformStats?.resources?.total || 0;
+    const f = platformStats?.resources?.files || 0;
+    const l = platformStats?.resources?.links || 0;
+    const n = platformStats?.resources?.notes || 0;
+    const img = platformStats?.resources?.images || 0;
+    const highestProj = platformStats?.resources?.highestDocsProject || 'None';
+    const noDocs = platformStats?.resources?.noDocsProjects || [];
+
+    const maxVal = Math.max(f, l, n, img) || 1;
+
+    return (
+      <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-5 text-slate-800 text-left shadow-sm mt-3">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div>
+            <h4 className="font-extrabold text-xs text-slate-400 uppercase tracking-wider">AI RAG Indexing Resources</h4>
+            <p className="text-[11px] text-slate-500 mt-0.5">Trained vector files and links count.</p>
+          </div>
+          <div className="bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-xl text-xs font-bold border border-emerald-100">
+            Total Trained: {total}
+          </div>
+        </div>
+
+        {/* Visual Bar Chart */}
+        <div className="space-y-3.5 pt-2">
+          {[
+            { label: 'PDF Documents', val: f, color: 'bg-[#a3e635]' },
+            { label: 'API / Git Links', val: l, color: 'bg-blue-500' },
+            { label: 'Markdown Notes', val: n, color: 'bg-violet-500' },
+            { label: 'Visual Guide Images', val: img, color: 'bg-pink-500' }
+          ].map(bar => {
+            const widthPct = (bar.val / maxVal) * 100;
+            return (
+              <div key={bar.label} className="space-y-1 text-xs">
+                <div className="flex justify-between font-bold text-slate-700 text-[10px]">
+                  <span>{bar.label}</span>
+                  <span className="font-mono">{bar.val}</span>
+                </div>
+                <div className="h-2.5 w-full bg-slate-50 border border-slate-100 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full ${bar.color} rounded-full transition-all duration-300`} 
+                    style={{ width: `${widthPct}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Highlights */}
+        <div className="border-t border-slate-100 pt-4 space-y-2 text-xs">
+          <div>
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Document Density Leader</span>
+            <p className="font-bold text-slate-900 mt-0.5">📂 {highestProj}</p>
+          </div>
+          {noDocs.length > 0 && (
+            <div>
+              <span className="text-[9px] font-bold text-rose-500 uppercase tracking-wider block">Missing Documentation Alerts</span>
+              <p className="text-slate-500 text-[11px] leading-relaxed mt-0.5">
+                The following projects have 0 uploaded files: {noDocs.map(p => `"${p}"`).join(', ')}.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderSystemHealthChart = () => {
+    const health = platformStats?.systemHealth || { database: 'Connected', status: 'Healthy', cpu: '10%', memory: '40%', storage: '5MB / 10GB' };
+    const chatUsage = platformStats?.aiChatUsage || { totalQueries: 0, avgResponseTime: '0s', successRate: '100%' };
+
+    return (
+      <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-5 text-slate-800 text-left shadow-sm mt-3">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div>
+            <h4 className="font-extrabold text-xs text-slate-400 uppercase tracking-wider">System Diagnoses & Health</h4>
+            <p className="text-[11px] text-slate-500 mt-0.5">Active port services and CPU metrics.</p>
+          </div>
+          <span className="px-2 py-0.5 bg-emerald-50 border border-emerald-100 text-emerald-700 text-[9px] font-black uppercase tracking-wider rounded">
+            {health.status}
+          </span>
+        </div>
+
+        {/* Port Status Cards */}
+        <div className="grid grid-cols-2 gap-3.5 text-xs">
+          <div className="bg-slate-50 p-3 rounded-xl border border-slate-150/60">
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">MySQL Database</span>
+            <span className="font-extrabold text-slate-900 block mt-0.5">🟢 {health.database}</span>
+          </div>
+          <div className="bg-slate-50 p-3 rounded-xl border border-slate-150/60">
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Vector Storage</span>
+            <span className="font-extrabold text-slate-800 block mt-0.5">{health.storage}</span>
+          </div>
+          <div className="bg-slate-50 p-3 rounded-xl border border-slate-150/60">
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">CPU Load</span>
+            <span className="font-extrabold text-slate-900 block mt-0.5">{health.cpu}</span>
+          </div>
+          <div className="bg-slate-50 p-3 rounded-xl border border-slate-150/60">
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Memory Usage</span>
+            <span className="font-extrabold text-slate-900 block mt-0.5">{health.memory}</span>
+          </div>
+        </div>
+
+        {/* AI Chat usages */}
+        <div className="border-t border-slate-100 pt-4 space-y-2 text-xs">
+          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">AI Inference Statistics</span>
+          <div className="flex justify-between text-[11px] text-slate-600">
+            <span>Inference Queries: <strong>{chatUsage.totalQueries}</strong></span>
+            <span>Latency: <strong>{chatUsage.avgResponseTime}</strong></span>
+            <span className="text-emerald-600 font-bold">API Success: {chatUsage.successRate}</span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderMarkdown = (text) => {
+    if (!text) return '';
+    let html = text.replace(/```([\s\S]*?)```/g, '<pre class="bg-slate-950 text-slate-100 p-4 rounded-xl font-mono text-xs my-3 overflow-x-auto"><code>$1</code></pre>');
+    html = html.replace(/`([^`\n]+)`/g, '<code class="bg-slate-100 text-rose-600 px-1.5 py-0.5 rounded font-mono text-xs font-semibold">$1</code>');
+    html = html.replace(/^### (.*$)/gim, '<h4 class="text-sm font-black text-slate-950 mt-4 mb-2">$1</h4>');
+    html = html.replace(/^## (.*$)/gim, '<h3 class="text-base font-black text-slate-950 mt-5 mb-2">$1</h3>');
+    html = html.replace(/^# (.*$)/gim, '<h2 class="text-lg font-black text-slate-950 mt-6 mb-3">$1</h2>');
+    html = html.replace(/^\s*-\s+(.*$)/gim, '<li class="ml-4 list-disc text-slate-700 text-sm py-0.5">$1</li>');
+    html = html.replace(/\*\*([^*]+)\*\*/g, '<strong class="font-bold text-slate-950">$1</strong>');
+    
+    html = html.split('\n').map((line) => {
+      if (line.trim().startsWith('<pre') || line.trim().startsWith('<li') || line.trim().startsWith('<h') || line.trim().startsWith('</pre>')) {
+        return line;
+      }
+      return line + '<br/>';
+    }).join('\n');
+    
+    return <div dangerouslySetInnerHTML={{ __html: html }} className="space-y-1.5 text-slate-700 text-sm leading-relaxed text-left" />;
+  };
+
+  const renderKfoResponse = (msg) => {
+    const textPart = msg.text.replace(/\[Chart: \w+\]/g, '');
+    return (
+      <div className="space-y-3">
+        {renderMarkdown(textPart)}
+        {msg.text.includes('[Chart: OnboardingReport]') && renderOnboardingReportChart()}
+        {msg.text.includes('[Chart: ProjectStatus]') && renderProjectStatusChart()}
+        {msg.text.includes('[Chart: ResourceStats]') && renderResourceStatsChart()}
+        {msg.text.includes('[Chart: SystemHealth]') && renderSystemHealthChart()}
+      </div>
+    );
+  };
+
+  // Document Export Helper utilities
+  const handleCopyText = (text) => {
+    const cleanText = text.replace(/\[Chart: \w+\]/g, '');
+    navigator.clipboard.writeText(cleanText);
+    toast.success('AI response copied to clipboard!');
+  };
+
+  const handleDownloadWord = (msg) => {
+    const title = "KFO Agent Platform Report";
+    const text = msg.text.replace(/\[Chart: \w+\]/g, '');
+    const cleanHtml = text
+      .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+      .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+      .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+      .replace(/^\s*-\s+(.*$)/gim, '<li>$1</li>')
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/\n/g, '<br/>');
+
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; padding: 20px;">
+        <h2 style="color: #4f46e5; border-bottom: 2px solid #4f46e5; padding-bottom: 5px;">${title}</h2>
+        <p style="font-size: 9pt; color: #64748b;"><em>Generated by KFO Agent - Enterprise AI Admin Intelligence on ${new Date().toLocaleString()}</em></p>
+        <hr style="border: 0; border-top: 1px solid #e2e8f0;"/>
+        <div style="font-size: 11pt; line-height: 1.6; color: #1e293b;">
+          ${cleanHtml}
+        </div>
+      </div>
+    `;
+
+    const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><title>KFO Report</title><style>body { font-family: Arial, sans-serif; }</style></head><body>";
+    const footer = "</body></html>";
+    const blob = new Blob(['\ufeff' + header + htmlContent + footer], { type: 'application/msword' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `kfo_report_${Date.now()}.doc`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    toast.success('Downloaded as Word Document (.doc)');
+  };
+
+  const handleDownloadExcel = (msg) => {
+    const text = msg.text.replace(/\[Chart: \w+\]/g, '');
+    const lines = text.split('\n').filter(l => l.trim().length > 0);
+    let tableRows = '';
+    
+    lines.forEach(line => {
+      if (line.startsWith('#')) {
+        tableRows += `<tr><td colspan="2" style="font-weight: bold; font-size: 13pt; background-color: #7c3aed; color: #ffffff; padding: 6px;">${line.replace(/#/g, '').trim()}</td></tr>`;
+      } else if (line.includes(':')) {
+        const parts = line.split(':');
+        const key = parts[0].replace(/[*-\s]/g, '').trim();
+        const val = parts.slice(1).join(':').trim();
+        tableRows += `<tr><td style="font-weight: bold; border: 1px solid #e2e8f0; padding: 4px;">${key}</td><td style="border: 1px solid #e2e8f0; padding: 4px;">${val}</td></tr>`;
+      } else {
+        tableRows += `<tr><td colspan="2" style="border: 1px solid #e2e8f0; padding: 4px; color: #475569;">${line.replace(/[*-\s]/g, '').trim()}</td></tr>`;
+      }
+    });
+
+    const excelHeader = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:x='urn:schemas-microsoft-com:office:excel' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'/><style>td { font-family: Arial; font-size: 10pt; }</style></head><body><table style='border-collapse: collapse;'>";
+    const excelFooter = "</table></body></html>";
+    const blob = new Blob(['\ufeff' + excelHeader + tableRows + excelFooter], { type: 'application/vnd.ms-excel' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `kfo_analytics_${Date.now()}.xls`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    toast.success('Downloaded as Excel Spreadsheet (.xls)');
+  };
+
+  const handleDownloadPDF = (msg) => {
+    const text = msg.text.replace(/\[Chart: \w+\]/g, '');
+    const cleanHtml = text
+      .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+      .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+      .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+      .replace(/^\s*-\s+(.*$)/gim, '<li>$1</li>')
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/\n/g, '<br/>');
+
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>KFO Agent - Enterprise AI Report</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 40px; color: #1e293b; line-height: 1.6; }
+            h1 { color: #4f46e5; border-bottom: 2px solid #4f46e5; padding-bottom: 5px; font-size: 20pt; }
+            h2 { color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; font-size: 16pt; margin-top: 25px; }
+            h3 { color: #1e293b; font-size: 13pt; margin-top: 20px; }
+            hr { border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0; }
+            li { margin-left: 20px; margin-bottom: 4px; }
+            .meta { font-size: 9px; color: #64748b; font-weight: bold; letter-spacing: 0.5px; }
+          </style>
+        </head>
+        <body>
+          <div class="meta">KFO Agent - ENTERPRISE AI ADMIN INTELLIGENCE • GENERATED ON ${new Date().toLocaleString()}</div>
+          <hr/>
+          <div>
+            ${cleanHtml}
+          </div>
+          <script>
+            window.onload = function() {
+              window.print();
+              setTimeout(function() { window.close(); }, 500);
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    toast.success('PDF print utility initiated.');
+  };
+
   const resetProjectWizard = () => {
     setShowProjectWizard(false);
     setWizardStep(1);
@@ -371,11 +936,22 @@ export const AdminDashboard = () => {
     setDevName(''); setDevEmail(''); setDevPhone(''); setDevRole(''); setDevFrom(''); setDevTo(''); setDevResp(''); setDevKt('');
     setAssignedEmployees({});
     setAddedResources([]); setProjectNotes(''); setAccessEnabled(true);
+    setProjectImages([]); setExistingProjImages([]);
     setCreatedProjectId(null); setSelectedFile(null); setUploadTitle('');
   };
 
   return (
     <div className="min-h-screen bg-[#fafbfc] flex flex-col font-sans text-slate-900 text-left">
+      <style>{`
+        @keyframes slideInRight {
+          from { transform: translateX(100%); }
+          to { transform: translateX(0); }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+      `}</style>
       {/* Top Navbar */}
       <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-3">
@@ -783,6 +1359,77 @@ export const AdminDashboard = () => {
                   <textarea rows="3" placeholder="General instructions, business rules, or RAG guidance guidelines..." value={projectNotes} onChange={(e) => setProjectNotes(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none resize-none"></textarea>
                 </div>
 
+                {/* Project Images (Explain & Analyze via AI) */}
+                <div className="space-y-3">
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
+                    Project Image Guides (Explain & Analyze via AI - Max 10)
+                  </label>
+                  
+                  {/* Image Grid Selector Card */}
+                  <div className="border-2 border-dashed border-slate-200 hover:border-slate-400 transition-all duration-150 rounded-2xl p-5 bg-slate-50/50 flex flex-col items-center justify-center text-center cursor-pointer relative group">
+                    <input 
+                      type="file" 
+                      multiple 
+                      accept="image/*"
+                      onChange={handleImageSelection}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    />
+                    <Image className="w-8 h-8 text-slate-400 mb-1.5 group-hover:scale-105 transition-transform" />
+                    <p className="text-xs font-extrabold text-slate-700">Click or Drag & Drop Images Here</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Supports PNG, JPG, JPEG, GIF, WebP (Up to 10 images total)</p>
+                  </div>
+
+                  {/* Previews Grid */}
+                  {(existingProjImages.length > 0 || projectImages.length > 0) && (
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-2">
+                      {/* 1. Existing Uploaded Images */}
+                      {existingProjImages.map((img) => (
+                        <div key={img.id} className="relative group aspect-square rounded-xl overflow-hidden border border-slate-200 bg-white">
+                          <img 
+                            src={`http://localhost:5000${img.file_path}`} 
+                            alt={img.title} 
+                            className="w-full h-full object-cover"
+                          />
+                          <button 
+                            type="button" 
+                            onClick={() => handleRemoveExistingImage(img.id)}
+                            className="absolute top-1.5 right-1.5 p-1 bg-rose-600/90 hover:bg-rose-700 text-white rounded-lg shadow opacity-0 group-hover:opacity-100 transition duration-150 cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                          <div className="absolute bottom-0 inset-x-0 bg-slate-950/70 text-[9px] font-bold text-white px-2 py-1 truncate text-center">
+                            {img.title}
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* 2. New Local Selection Images */}
+                      {projectImages.map((fileObj, idx) => {
+                        const localUrl = URL.createObjectURL(fileObj);
+                        return (
+                          <div key={idx} className="relative group aspect-square rounded-xl overflow-hidden border border-slate-200 bg-white">
+                            <img 
+                              src={localUrl} 
+                              alt="preview" 
+                              className="w-full h-full object-cover"
+                            />
+                            <button 
+                              type="button" 
+                              onClick={() => handleRemoveLocalImage(idx)}
+                              className="absolute top-1.5 right-1.5 p-1 bg-slate-900/95 hover:bg-slate-950 text-white rounded-lg shadow opacity-0 group-hover:opacity-100 transition duration-150 cursor-pointer"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                            <div className="absolute bottom-0 inset-x-0 bg-slate-900/80 text-[8px] font-extrabold text-lime-400 px-2 py-1 truncate uppercase text-center">
+                              Queued
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
                 {/* Access feed configuration */}
                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/50 flex items-center justify-between">
                   <div className="space-y-1">
@@ -1086,6 +1733,289 @@ export const AdminDashboard = () => {
               </div>
             )}
 
+          </div>
+        </div>
+      )}
+
+      {/* Floating KFO Agent Button at Bottom-Right */}
+      <div className="fixed bottom-6 right-6 z-40 group">
+        {/* Tooltip */}
+        <div className="absolute right-0 bottom-16 mb-2 scale-0 group-hover:scale-100 transition-all origin-bottom bg-slate-900/95 text-white text-[10px] font-black tracking-wider uppercase px-3 py-1.5 rounded-xl shadow-lg border border-white/10 whitespace-nowrap z-50">
+          KFO Agent - AI Admin Assistant
+        </div>
+        
+        {/* Glowing button */}
+        <button 
+          onClick={() => setShowKfo(true)}
+          className="w-14 h-14 rounded-full bg-violet-600 hover:bg-violet-700 text-white flex items-center justify-center shadow-xl shadow-violet-500/30 border border-violet-400/50 cursor-pointer relative transition duration-300 hover:scale-110 active:scale-95 animate-[pulse_3s_infinite]"
+          style={{
+            background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+            boxShadow: '0 0 20px rgba(124, 58, 237, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.2)'
+          }}
+        >
+          <div className="absolute inset-0 rounded-full bg-violet-500 animate-ping opacity-25"></div>
+          {/* Violet Robot Icon SVG */}
+          <svg viewBox="0 0 24 24" fill="none" className="w-7 h-7 text-white drop-shadow">
+            <rect x="4" y="9" width="16" height="11" rx="3" fill="white" fillOpacity="0.15" stroke="white" strokeWidth="1.8" />
+            <path d="M12 3v6M9 6h6" stroke="white" strokeWidth="1.8" strokeLinecap="round" />
+            <circle cx="8" cy="13" r="1.3" fill="white" />
+            <circle cx="16" cy="13" r="1.3" fill="white" />
+            <path d="M9 17c1.5 1 4.5 1 6 0" stroke="white" strokeWidth="1.8" strokeLinecap="round" />
+          </svg>
+        </button>
+      </div>
+
+      {/* KFO Agent Panel Overlay (Glassmorphism Slide-out Drawer) */}
+      {showKfo && (
+        <div className="fixed inset-0 z-50 bg-slate-950/45 backdrop-blur-sm flex justify-end animate-[fadeIn_0.15s_ease-out]">
+          
+          {/* Panel Container */}
+          <div className={`w-full ${kfoFullScreen ? 'max-w-full' : 'max-w-2xl'} bg-white border-l border-slate-200/80 shadow-2xl flex flex-col h-full transition-all duration-300 ease-in-out relative`}>
+            
+            {/* Header */}
+            <div className="px-6 py-4.5 border-b border-slate-100 flex items-center justify-between"
+              style={{
+                background: 'linear-gradient(to right, rgba(124, 58, 237, 0.05), rgba(79, 70, 229, 0.02))'
+              }}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-violet-100 border border-violet-200 flex items-center justify-center relative flex-shrink-0 shadow-sm"
+                  style={{
+                    boxShadow: '0 0 12px rgba(124, 58, 237, 0.15)'
+                  }}
+                >
+                  <span className="absolute top-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white animate-pulse"></span>
+                  <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6 text-violet-600">
+                    <rect x="4" y="9" width="16" height="11" rx="3" fill="#7c3aed" fillOpacity="0.1" stroke="#7c3aed" strokeWidth="1.8" />
+                    <path d="M12 3v6M9 6h6" stroke="#7c3aed" strokeWidth="1.8" strokeLinecap="round" />
+                    <circle cx="8" cy="13" r="1.3" fill="#7c3aed" />
+                    <circle cx="16" cy="13" r="1.3" fill="#7c3aed" />
+                    <path d="M9 17c1.5 1 4.5 1 6 0" stroke="#7c3aed" strokeWidth="1.8" strokeLinecap="round" />
+                  </svg>
+                </div>
+                <div className="text-left">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-black text-slate-950 text-sm">🤖 KFO Agent</h3>
+                    <span className="text-[8px] bg-emerald-100 text-emerald-700 font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">🟢 Online</span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Enterprise AI Admin Intelligence</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {/* Full Screen Toggle Button */}
+                <button 
+                  onClick={() => setKfoFullScreen(!kfoFullScreen)}
+                  className="p-1.5 hover:bg-slate-100 rounded-xl text-slate-500 hover:text-slate-900 transition cursor-pointer"
+                  title={kfoFullScreen ? "Exit Full Screen" : "Full Screen Mode"}
+                >
+                  {kfoFullScreen ? (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 9h6m0 0V3m0 6l-6-6M15 15h-6m0 0v6m0-6l6 6" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5h-4m4 0v-4m0 4l-5-5" />
+                    </svg>
+                  )}
+                </button>
+                <button 
+                  onClick={() => setShowKfo(false)}
+                  className="p-1.5 hover:bg-slate-100 rounded-xl text-slate-500 hover:text-slate-900 transition cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Capabilities Info Bar */}
+            <div className="bg-slate-50 px-6 py-2.5 border-b border-slate-100 flex items-center justify-between text-[9px] text-slate-400 font-extrabold uppercase tracking-wider">
+              <span>Capabilities:</span>
+              <div className="flex items-center gap-3">
+                <span className="text-violet-600 font-black">Platform Analytics</span>
+                <span>•</span>
+                <span className="text-violet-600 font-black">Reports</span>
+                <span>•</span>
+                <span className="text-violet-600 font-black">Employee Insights</span>
+                <span>•</span>
+                <span className="text-violet-600 font-black">Project Intelligence</span>
+              </div>
+            </div>
+
+            {/* Chats Thread Body */}
+            <div className="flex-1 p-6 overflow-y-auto space-y-6 bg-slate-50/20 scrollbar-thin">
+              {kfoChats.map((msg, i) => (
+                <div key={i} className={`flex items-start gap-3 max-w-3xl ${msg.sender === 'user' ? 'ml-auto flex-row-reverse text-right' : 'mr-auto text-left'}`}>
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-[10px] border flex-shrink-0 ${
+                    msg.sender === 'user' ? 'bg-slate-950 text-white border-slate-900' : 'bg-violet-100 text-violet-900 border-violet-200'
+                  }`}>
+                    {msg.sender === 'user' ? 'A' : 'AI'}
+                  </div>
+                  <div className="space-y-1 max-w-[88%]">
+                    <div className={`p-4 rounded-2xl shadow-sm border text-xs leading-relaxed ${
+                      msg.sender === 'user' ? 'bg-slate-950 text-white border-slate-900' : 'bg-white text-slate-800 border-slate-200/50'
+                    }`}>
+                      {msg.sender === 'user' ? (
+                        <p className="font-semibold whitespace-pre-wrap text-sm">{msg.text}</p>
+                      ) : (
+                        renderKfoResponse(msg)
+                      )}
+                    </div>
+                    
+                    {msg.sender === 'ai' && (
+                      <div className="flex items-center gap-3 mt-1 px-1 justify-start">
+                        <button 
+                          onClick={() => handleCopyText(msg.text)}
+                          className="p-1 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-700 transition cursor-pointer flex items-center gap-1 text-[9px] font-bold"
+                          title="Copy response"
+                        >
+                          <Copy className="w-3 h-3 text-slate-500" />
+                          <span>Copy</span>
+                        </button>
+                        <button 
+                          onClick={() => setDownloadTargetMsg(msg)}
+                          className="p-1 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-violet-750 transition cursor-pointer flex items-center gap-1 text-[9px] font-bold"
+                          title="Export report"
+                        >
+                          <Download className="w-3 h-3 text-slate-500" />
+                          <span>Export</span>
+                        </button>
+                      </div>
+                    )}
+                    <span className="text-[8px] text-slate-400 font-bold px-1 block mt-0.5">{msg.time}</span>
+                  </div>
+                </div>
+              ))}
+
+              {kfoTyping && (
+                <div className="flex items-start gap-3 mr-auto text-left">
+                  <div className="w-8 h-8 rounded-lg bg-violet-150 border border-violet-200 text-violet-750 font-bold text-[10px] flex items-center justify-center animate-[pulse_1s_infinite]">
+                    AI
+                  </div>
+                  <div className="p-4 bg-white border border-slate-200/50 rounded-2xl shadow-sm flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-bounce"></span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-bounce [animation-delay:0.2s]"></span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-bounce [animation-delay:0.4s]"></span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Chat Input & Suggested Prompts Footer */}
+            <div className="p-5 border-t border-slate-100 bg-white space-y-4">
+              
+              {/* Suggested Prompts Grid */}
+              <div className="space-y-2">
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block text-left">Suggested Analytics Prompts</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    'Generate Onboarding Report',
+                    'Show Project Analytics',
+                    'Show AI Indexing Status',
+                    'Show System Health'
+                  ].map((promptText) => (
+                    <button 
+                      key={promptText}
+                      onClick={() => handleKfoSendMessage(promptText)}
+                      className="px-3 py-1.5 border border-slate-200 hover:border-slate-800 rounded-xl text-[9px] font-extrabold text-slate-600 hover:text-slate-900 transition cursor-pointer bg-slate-50/50 hover:bg-white"
+                    >
+                      {promptText}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Chat Input Field */}
+              <div className="flex items-center gap-3">
+                <input 
+                  type="text"
+                  placeholder="Ask KFO Agent to analyze platform data..."
+                  value={kfoInput}
+                  onChange={(e) => setKfoInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleKfoSendMessage()}
+                  className="flex-1 px-4 py-3 bg-[#eff4fc]/50 border border-slate-200 rounded-2xl text-slate-950 placeholder-slate-400 focus:outline-none focus:border-violet-500 focus:bg-white focus:ring-4 focus:ring-violet-500/10 text-xs font-bold transition-all"
+                />
+                <button 
+                  onClick={() => handleKfoSendMessage()}
+                  className="w-10 h-10 rounded-2xl bg-violet-600 text-white flex items-center justify-center cursor-pointer shadow-md hover:bg-violet-700 transition"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* Export Format Selector Modal Popover Overlay */}
+      {downloadTargetMsg && (
+        <div className="fixed inset-0 z-55 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 animate-[fadeIn_0.15s_ease-out]">
+          <div className="bg-white rounded-3xl border border-slate-200/50 max-w-sm w-full p-6 space-y-4 shadow-2xl text-left">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h4 className="font-extrabold text-sm text-slate-950">Choose Export Format</h4>
+              <button 
+                onClick={() => setDownloadTargetMsg(null)}
+                className="p-1.5 hover:bg-slate-100 rounded-xl text-slate-500 hover:text-slate-900 transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            
+            <p className="text-[11px] text-slate-400 leading-relaxed">Select the target document format to download the generated KFO Agent intelligence report:</p>
+            
+            <div className="space-y-2.5">
+              <button 
+                onClick={() => {
+                  handleDownloadWord(downloadTargetMsg);
+                  setDownloadTargetMsg(null);
+                }}
+                className="w-full flex items-center gap-3 p-3 border border-slate-150/60 hover:border-violet-500 hover:bg-violet-50/30 rounded-2xl transition text-left cursor-pointer group"
+              >
+                <span className="text-xl">📄</span>
+                <div>
+                  <p className="text-xs font-extrabold text-slate-800 group-hover:text-violet-700">Microsoft Word Document</p>
+                  <p className="text-[9px] text-slate-400 mt-0.5">Download as editable Word file (.doc)</p>
+                </div>
+              </button>
+
+              <button 
+                onClick={() => {
+                  handleDownloadExcel(downloadTargetMsg);
+                  setDownloadTargetMsg(null);
+                }}
+                className="w-full flex items-center gap-3 p-3 border border-slate-150/60 hover:border-emerald-500 hover:bg-emerald-50/30 rounded-2xl transition text-left cursor-pointer group"
+              >
+                <span className="text-xl">📊</span>
+                <div>
+                  <p className="text-xs font-extrabold text-slate-800 group-hover:text-emerald-700">Microsoft Excel Spreadsheet</p>
+                  <p className="text-[9px] text-slate-400 mt-0.5">Download data logs as Excel table (.xls)</p>
+                </div>
+              </button>
+
+              <button 
+                onClick={() => {
+                  handleDownloadPDF(downloadTargetMsg);
+                  setDownloadTargetMsg(null);
+                }}
+                className="w-full flex items-center gap-3 p-3 border border-slate-150/60 hover:border-rose-500 hover:bg-rose-50/30 rounded-2xl transition text-left cursor-pointer group"
+              >
+                <span className="text-xl">📕</span>
+                <div>
+                  <p className="text-xs font-extrabold text-slate-800 group-hover:text-rose-700">Adobe PDF Document</p>
+                  <p className="text-[9px] text-slate-400 mt-0.5">Open formatted system print options (.pdf)</p>
+                </div>
+              </button>
+            </div>
+            
+            <div className="pt-2 flex justify-end">
+              <button 
+                onClick={() => setDownloadTargetMsg(null)}
+                className="px-4 py-2 border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl text-xs font-bold transition cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}

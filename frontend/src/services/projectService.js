@@ -70,6 +70,12 @@ export const projectService = {
   deleteProject: async (id) => {
     const response = await api.delete(`/api/projects/${id}`);
     return response.data;
+  },
+
+  // Delete a specific resource (document or image) by ID
+  deleteResource: async (resourceId) => {
+    const response = await api.delete(`/api/projects/resources/${resourceId}`);
+    return response.data;
   }
 };
 

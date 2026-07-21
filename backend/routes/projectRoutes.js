@@ -38,5 +38,6 @@ router.post('/', projectController.createProject);
 router.patch('/:id', projectController.updateProject);
 router.delete('/:id', projectController.deleteProject);
 router.post('/:id/resources', upload.single('file'), projectController.uploadResource);
+router.delete('/resources/:resourceId', projectController.deleteResource);
 
 module.exports = router;

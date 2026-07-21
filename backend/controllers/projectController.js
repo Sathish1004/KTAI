@@ -420,3 +420,33 @@ exports.deleteProject = async (req, res) => {
     });
   }
 };
+
+// 8. Delete specific project resource (Admin only)
+exports.deleteResource = async (req, res) => {
+  try {
+    const resourceId = req.params.resourceId;
+
+    // Fetch resource file path to clean from disk
+    const [resources] = await pool.query('SELECT file_path FROM project_resources WHERE id = ?', [resourceId]);
+    if (resources.length > 0 && resources[0].file_path) {
+      const fs = require('fs');
+      const absolutePath = path.join(__dirname, '..', resources[0].file_path);
+      if (fs.existsSync(absolutePath)) {
+        fs.unlinkSync(absolutePath);
+      }
+    }
+
+    await pool.query('DELETE FROM project_resources WHERE id = ?', [resourceId]);
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Resource deleted successfully.'
+    });
+  } catch (error) {
+    console.error("deleteResource error:", error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to delete resource.'
+    });
+  }
+};
