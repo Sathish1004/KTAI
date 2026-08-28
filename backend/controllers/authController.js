@@ -168,7 +168,7 @@ exports.registerEmployee = async (req, res) => {
 exports.getAllEmployees = async (req, res) => {
   try {
     const [employees] = await pool.query(
-      'SELECT id, fullName, fullName AS name, email, role, status, createdAt, updatedAt FROM users WHERE role = "employee" ORDER BY fullName ASC'
+      'SELECT id, fullName, fullName AS name, email, role, status, createdAt, updatedAt FROM users WHERE role = \'employee\' ORDER BY fullName ASC'
     );
     res.status(200).json({
       status: 'success',
@@ -225,12 +225,12 @@ exports.updateEmployee = async (req, res) => {
       }
       const hashedPassword = await bcrypt.hash(password, 10);
       await pool.query(
-        'UPDATE users SET fullName = ?, email = ?, password = ?, password_plain = NULL, status = ? WHERE id = ? AND role = "employee"',
+        'UPDATE users SET fullName = ?, email = ?, password = ?, password_plain = NULL, status = ? WHERE id = ? AND role = \'employee\'',
         [resolvedName, email, hashedPassword, updatedStatus, id]
       );
     } else {
       await pool.query(
-        'UPDATE users SET fullName = ?, email = ?, status = ? WHERE id = ? AND role = "employee"',
+        'UPDATE users SET fullName = ?, email = ?, status = ? WHERE id = ? AND role = \'employee\'',
         [resolvedName, email, updatedStatus, id]
       );
     }
@@ -253,7 +253,7 @@ exports.deleteEmployee = async (req, res) => {
   try {
     const { id } = req.params;
     
-    const [result] = await pool.query('DELETE FROM users WHERE id = ? AND role = "employee"', [id]);
+    const [result] = await pool.query('DELETE FROM users WHERE id = ? AND role = \'employee\'', [id]);
     
     if (result.affectedRows === 0) {
       return res.status(404).json({
