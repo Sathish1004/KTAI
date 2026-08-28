@@ -12,7 +12,7 @@ if (!fs.existsSync(uploadDir)) {
 exports.getEmployeesList = async (req, res) => {
   try {
     const [employees] = await pool.query(
-      'SELECT id, name, email FROM users WHERE role = "employee" ORDER BY name ASC'
+      'SELECT id, fullName AS name, email FROM users WHERE role = "employee" ORDER BY fullName ASC'
     );
     res.status(200).json({
       status: 'success',

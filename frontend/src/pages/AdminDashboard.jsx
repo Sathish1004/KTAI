@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { 
   BookOpen, LogOut, Users, FileText, Settings, Shield, 
   FolderPlus, Layers, Calendar, Link, Check, Plus, Trash2, 
@@ -13,6 +14,7 @@ import onboardingImg from '../assets/ai_developer_onboarding.png';
 
 export const AdminDashboard = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   // Employee Form State
   const [showEmployeeForm, setShowEmployeeForm] = useState(false);
@@ -139,11 +141,20 @@ export const AdminDashboard = () => {
     toast.success('Successfully logged out.');
   };
 
-  // Register a new employee (original feature)
+  // Register a new employee (original feature with validations)
   const handleRegisterEmployee = async (e) => {
     e.preventDefault();
     if (!empName || !empEmail || !empPassword) {
       toast.error('All fields are required.');
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(empEmail)) {
+      toast.error('Please enter a valid email address.');
+      return;
+    }
+    if (empPassword.length < 6) {
+      toast.error('Password must be at least 6 characters long.');
       return;
     }
     setRegistering(true);
@@ -1019,12 +1030,19 @@ export const AdminDashboard = () => {
             <div className="space-y-1">
               <h3 className="font-bold text-slate-950 text-sm">Employee Management</h3>
               <p className="text-xs text-slate-400 leading-normal">Create access credentials for new team members.</p>
-              <div className="pt-2">
+              <div className="pt-2 flex flex-col items-start gap-2">
                 <button 
                   onClick={() => { setShowEmployeeForm(!showEmployeeForm); setShowProjectWizard(false); }}
                   className="text-xs font-bold text-slate-950 hover:underline transition inline-flex items-center gap-1 cursor-pointer"
                 >
-                  <span>{showEmployeeForm ? 'Hide Form' : 'Manage Employees'}</span>
+                  <span>{showEmployeeForm ? 'Hide Form' : 'Add Employee Account'}</span>
+                  <span>→</span>
+                </button>
+                <button 
+                  onClick={() => navigate('/admin/employees')}
+                  className="text-xs font-bold text-blue-600 hover:underline transition inline-flex items-center gap-1 cursor-pointer"
+                >
+                  <span>View Employee List</span>
                   <span>→</span>
                 </button>
               </div>
@@ -1191,8 +1209,37 @@ export const AdminDashboard = () => {
               <div className="space-y-6 max-w-4xl mx-auto animate-[fadeIn_0.15s_ease-out]">
                 <h4 className="text-sm font-black text-slate-950 border-b border-slate-100 pb-2">Step 2: Senior Team Information</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <div className="space-y-1.5"><label className="text-xs font-bold text-slate-700">Senior Developer Name</label><input type="text" placeholder="e.g. Sathish Sharma" value={devName} onChange={(e) => setDevName(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none" /></div>
-                  <div className="space-y-1.5"><label className="text-xs font-bold text-slate-700">Senior Developer Email</label><input type="email" placeholder="e.g. sathish@company.com" value={devEmail} onChange={(e) => setDevEmail(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none" /></div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-700">Senior Developer Email</label>
+                    <select 
+                      value={devEmail} 
+                      onChange={(e) => {
+                        const selectedEmail = e.target.value;
+                        setDevEmail(selectedEmail);
+                        const matchedEmp = employeesOptions.find(emp => emp.email === selectedEmail);
+                        setDevName(matchedEmp ? (matchedEmp.fullName || matchedEmp.name) : '');
+                      }} 
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-slate-950 focus:bg-white font-bold"
+                    >
+                      <option value="">Select Senior Developer Email...</option>
+                      {employeesOptions.map(emp => (
+                        <option key={emp.id} value={emp.email}>{emp.email}</option>
+                      ))}
+                      {devEmail && !employeesOptions.some(emp => emp.email === devEmail) && (
+                        <option value={devEmail}>{devEmail}</option>
+                      )}
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-700">Senior Developer Name</label>
+                    <input 
+                      type="text" 
+                      readOnly 
+                      placeholder="Select developer email first" 
+                      value={devName} 
+                      className="w-full px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm focus:outline-none cursor-not-allowed text-slate-500 font-bold" 
+                    />
+                  </div>
                   <div className="space-y-1.5"><label className="text-xs font-bold text-slate-700">Phone Number</label><input type="tel" placeholder="+91..." value={devPhone} onChange={(e) => setDevPhone(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none" /></div>
                   <div className="space-y-1.5"><label className="text-xs font-bold text-slate-700">Role</label><input type="text" placeholder="e.g. Lead Technical Architect" value={devRole} onChange={(e) => setDevRole(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none" /></div>
                   <div className="space-y-1.5"><label className="text-xs font-bold text-slate-700">Working From Date</label><input type="date" value={devFrom} onChange={(e) => setDevFrom(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none" /></div>

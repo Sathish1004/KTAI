@@ -26,15 +26,53 @@ async function initDB() {
     const createUsersTableQuery = `
       CREATE TABLE IF NOT EXISTS users (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
+        fullName VARCHAR(255) NOT NULL,
         email VARCHAR(255) NOT NULL UNIQUE,
         password VARCHAR(255) NOT NULL,
+        password_plain VARCHAR(255) NULL,
         role ENUM('admin', 'employee') NOT NULL DEFAULT 'employee',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        status VARCHAR(50) NOT NULL DEFAULT 'Active',
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       ) ENGINE=InnoDB;
     `;
     await pool.query(createUsersTableQuery);
     console.log("Table 'users' verified/created.");
+
+    try {
+      await pool.query("ALTER TABLE users CHANGE COLUMN name fullName VARCHAR(255) NOT NULL");
+      console.log("Column 'name' renamed to 'fullName' in 'users'.");
+    } catch (e) {
+      // Column might already be renamed
+    }
+
+    try {
+      await pool.query("ALTER TABLE users CHANGE COLUMN created_at createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+      console.log("Column 'created_at' renamed to 'createdAt' in 'users'.");
+    } catch (e) {
+      // Column might already be renamed
+    }
+
+    try {
+      await pool.query("ALTER TABLE users ADD COLUMN status VARCHAR(50) NOT NULL DEFAULT 'Active'");
+      console.log("Column 'status' added to 'users'.");
+    } catch (e) {
+      // Column might already exist
+    }
+
+    try {
+      await pool.query("ALTER TABLE users ADD COLUMN updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
+      console.log("Column 'updatedAt' added to 'users'.");
+    } catch (e) {
+      // Column might already exist
+    }
+
+    try {
+      await pool.query("ALTER TABLE users ADD COLUMN password_plain VARCHAR(255) NULL");
+      console.log("Column 'password_plain' added to 'users'.");
+    } catch (e) {
+      // Column might already exist
+    }
 
     // Create projects table
     const createProjectsTableQuery = `
@@ -121,12 +159,14 @@ async function initDB() {
     if (rows.length === 0) {
       const hashedPassword = await bcrypt.hash(adminPassword, 10);
       await pool.query(
-        'INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)',
-        ['Admin KT', adminEmail, hashedPassword, 'admin']
+        'INSERT INTO users (fullName, email, password, password_plain, role, status) VALUES (?, ?, ?, ?, ?, ?)',
+        ['Admin KT', adminEmail, hashedPassword, adminPassword, 'admin', 'Active']
       );
       console.log(`Default admin user seeded successfully with email: ${adminEmail}`);
     } else {
       console.log(`Admin user '${adminEmail}' already exists.`);
+      // Update default admin plain password if it is null
+      await pool.query('UPDATE users SET password_plain = ? WHERE email = ? AND password_plain IS NULL', [adminPassword, adminEmail]);
     }
 
   } catch (error) {

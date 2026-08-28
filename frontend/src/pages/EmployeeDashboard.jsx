@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { 
-  BookOpen, LogOut, MessageSquare, Briefcase, Settings, 
-  ChevronLeft, ChevronRight, LayoutDashboard, Database, 
+import {
+  BookOpen, LogOut, MessageSquare, Briefcase, Settings,
+  ChevronLeft, ChevronRight, LayoutDashboard, Database,
   Code, Cpu, Check, Search, Star, Bell, User, Send, X, Copy, Image,
-  RotateCw, Sparkles, Folder, FileText, ArrowRight, ShieldCheck, 
+  RotateCw, Sparkles, Folder, FileText, ArrowRight, ShieldCheck,
   Layers, Link, Download, Info, Users, ExternalLink, Eye, EyeOff
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -34,7 +34,6 @@ export const EmployeeDashboard = () => {
   const [aiTyping, setAiTyping] = useState(false);
 
   const [showEmail, setShowEmail] = useState(false);
-  const [showProfilePass, setShowProfilePass] = useState(false);
   const [profilePic, setProfilePic] = useState(localStorage.getItem('employee_pic') || null);
 
   const handleProfilePicChange = (e) => {
@@ -87,7 +86,7 @@ export const EmployeeDashboard = () => {
         setSelectedProject(res.data.project);
         setProjectTab('overview');
         setActiveTab('project-view'); // Dynamic view tab
-        
+
         // Initialize RAG chat for this specific project in projectChats state
         const welcomeMsg = {
           sender: 'ai',
@@ -163,22 +162,22 @@ export const EmployeeDashboard = () => {
     }
     // Check if employee asks about image guides
     if (q.includes('image') || q.includes('diagram') || q.includes('visual') || q.includes('explain path')) {
-      const imgsCount = projectDetails.resources?.filter(r => 
+      const imgsCount = projectDetails.resources?.filter(r =>
         r.resource_type === 'file' && ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(r.file_type?.toLowerCase())
       ).length || 0;
       if (imgsCount === 0) {
         return `### Project Image Guides\nThere are currently no uploaded visual diagrams or image guides for **"${projName}"**. Admin can upload diagrams in Resource Settings.`;
       }
-      
+
       // If it mentions a specific image file name
       const matchedImg = projectDetails.resources
         ?.filter(r => r.resource_type === 'file' && ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(r.file_type?.toLowerCase()))
         .find(r => q.includes(r.title.toLowerCase()) || q.includes(r.file_path.toLowerCase()));
-        
+
       if (matchedImg) {
         return `### AI Image Analysis: **${matchedImg.title}**\n- **Source URL**: \`http://localhost:5000${matchedImg.file_path}\`\n\n**Visual Layout Analysis**:\nThis diagram represents the system design layout for **"${projName}"** utilizing **${tech}** modules. It defines the component structures, data models, or UX flows to follow during onboarding. Let me know if you need specific details on any block inside this guide!`;
       }
-      
+
       const imgsList = projectDetails.resources
         ?.filter(r => r.resource_type === 'file' && ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(r.file_type?.toLowerCase()))
         .map(r => `- **${r.title}** (URL: [View Image](http://localhost:5000${r.file_path}))`)
@@ -188,7 +187,7 @@ export const EmployeeDashboard = () => {
 
     // Check if employee asks about uploaded resources
     if (q.includes('file') || q.includes('document') || q.includes('resource') || q.includes('upload')) {
-      const filesCount = projectDetails.resources?.filter(r => 
+      const filesCount = projectDetails.resources?.filter(r =>
         r.resource_type === 'file' && !['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(r.file_type?.toLowerCase())
       ).length || 0;
       if (filesCount === 0) {
@@ -334,28 +333,28 @@ export const EmployeeDashboard = () => {
     html = html.replace(/^# (.*$)/gim, '<h2 class="text-lg font-black text-slate-950 mt-6 mb-3">$1</h2>');
     html = html.replace(/^\s*-\s+(.*$)/gim, '<li class="ml-4 list-disc text-slate-700 text-sm py-0.5">$1</li>');
     html = html.replace(/\*\*([^*]+)\*\*/g, '<strong class="font-bold text-slate-950">$1</strong>');
-    
+
     html = html.split('\n').map((line) => {
       if (line.trim().startsWith('<pre') || line.trim().startsWith('<li') || line.trim().startsWith('<h') || line.trim().startsWith('</pre>')) {
         return line;
       }
       return line + '<br/>';
     }).join('\n');
-    
+
     return <div dangerouslySetInnerHTML={{ __html: html }} className="space-y-1.5 text-slate-700 text-sm leading-relaxed" />;
   };
 
   return (
     <div className="min-h-screen bg-[#fafbfc] flex flex-col font-sans text-slate-900 overflow-x-hidden relative text-left">
-      
+
       {/* Top Navbar */}
       <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shadow-sm relative z-30">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-slate-950 flex items-center justify-center shadow-md">
             <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5">
-              <path d="M12 3L2 8l10 5 10-5-10-5z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M2 17l10 5 10-5" stroke="#a3e635" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M2 12l10 5 10-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="2 2"/>
+              <path d="M12 3L2 8l10 5 10-5-10-5z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M2 17l10 5 10-5" stroke="#a3e635" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M2 12l10 5 10-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="2 2" />
             </svg>
           </div>
           <div>
@@ -380,7 +379,7 @@ export const EmployeeDashboard = () => {
 
       {/* Main Container */}
       <div className="flex-1 flex items-stretch">
-        
+
         {/* Collapsible Left Sidebar */}
         <aside className={`${sidebarCollapsed ? 'w-20' : 'w-64'} bg-white border-r border-slate-200 flex flex-col justify-between transition-all duration-300 ease-in-out select-none relative z-20`}>
           <div className="p-4 space-y-6">
@@ -419,9 +418,9 @@ export const EmployeeDashboard = () => {
 
         {/* Content Panel */}
         <main className="flex-1 p-6 md:p-8 overflow-y-auto space-y-8 max-w-7xl mx-auto">
-          
+
           {/* Default views */}
-          
+
           {/* TAB 1: Dashboard */}
           {activeTab === 'dashboard' && (
             <div className="space-y-8 animate-[fadeIn_0.2s_ease-out]">
@@ -431,21 +430,21 @@ export const EmployeeDashboard = () => {
                     <span>Welcome Back, {user?.name || 'Developer'}! 👋</span>
                   </div>
                   <h2 className="text-2xl md:text-3.5xl font-black text-slate-950 leading-tight">
-                    Your Knowledge. <br/>
+                    Your Knowledge. <br />
                     <span className="text-emerald-600">Supercharged</span> with AI.
                   </h2>
                   <p className="text-slate-500 text-xs md:text-sm leading-relaxed max-w-md">
                     Access project documentation, technical resources, and get AI-powered answers to accelerate your onboarding and productivity.
                   </p>
                   <div className="flex flex-wrap items-center gap-3 pt-2">
-                    <button 
+                    <button
                       onClick={() => setActiveTab('ai-assistant')}
                       className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md shadow-emerald-600/10"
                     >
                       <Sparkles className="w-3.5 h-3.5" />
                       <span>Chat with AI Assistant</span>
                     </button>
-                    <button 
+                    <button
                       onClick={() => setActiveTab('projects')}
                       className="px-5 py-2.5 bg-white border border-slate-200 hover:border-slate-800 text-slate-700 hover:text-slate-900 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
                     >
@@ -456,9 +455,9 @@ export const EmployeeDashboard = () => {
                 </div>
 
                 <div className="hidden md:block absolute right-0 bottom-0 h-full w-[45%] pointer-events-none select-none">
-                  <img 
-                    src={onboardingImg} 
-                    alt="AI Onboarding illustration" 
+                  <img
+                    src={onboardingImg}
+                    alt="AI Onboarding illustration"
                     className="w-full h-full object-contain object-bottom scale-105 origin-bottom"
                   />
                 </div>
@@ -502,14 +501,13 @@ export const EmployeeDashboard = () => {
                     <p className="text-xs text-slate-400 py-6 text-center">No assignment notifications logged.</p>
                   ) : (
                     userProjects.map((proj) => (
-                      <div 
-                        key={proj.id} 
+                      <div
+                        key={proj.id}
                         onClick={() => handleSelectProject(proj.id)}
-                        className={`p-4 border rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all duration-150 text-left shadow-sm group ${
-                          proj.is_enabled === 0 
-                            ? 'bg-rose-50/25 border-rose-100/50 cursor-not-allowed opacity-75' 
+                        className={`p-4 border rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all duration-150 text-left shadow-sm group ${proj.is_enabled === 0
+                            ? 'bg-rose-50/25 border-rose-100/50 cursor-not-allowed opacity-75'
                             : 'bg-slate-50 border-slate-100 hover:bg-white hover:border-slate-300 cursor-pointer'
-                        }`}
+                          }`}
                       >
                         <div className="space-y-1">
                           <p className="text-xs text-slate-800 font-bold leading-normal">
@@ -570,7 +568,7 @@ export const EmployeeDashboard = () => {
                             🔒 Admin must give access to this project
                           </div>
                         ) : (
-                          <button 
+                          <button
                             onClick={() => handleSelectProject(proj.id)}
                             className="w-full text-center py-2.5 bg-slate-950 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer"
                           >
@@ -589,9 +587,9 @@ export const EmployeeDashboard = () => {
           {/* TAB 3: Dynamic Project View Pane (Detail View Workspace) */}
           {activeTab === 'project-view' && selectedProject && (
             <div className="space-y-6 text-left animate-[fadeIn_0.2s_ease-out]">
-              
+
               {/* Back button */}
-              <button 
+              <button
                 onClick={() => setActiveTab('projects')}
                 className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-900 transition"
               >
@@ -604,7 +602,7 @@ export const EmployeeDashboard = () => {
                   <h2 className="text-2xl font-black text-slate-950">{selectedProject.name}</h2>
                   <p className="text-xs text-slate-400 font-mono">Client: {selectedProject.client} | Status: <span className="font-bold text-slate-900">{selectedProject.status}</span></p>
                 </div>
-                
+
                 {/* Secondary quick triggers */}
                 <div className="flex items-center gap-2">
                   {selectedProject.github_url && (
@@ -635,11 +633,10 @@ export const EmployeeDashboard = () => {
                     <button
                       key={tab.id}
                       onClick={() => setProjectTab(tab.id)}
-                      className={`flex items-center gap-2 px-4 py-3 text-xs font-bold transition border-b-2 cursor-pointer ${
-                        projectTab === tab.id 
-                          ? 'border-slate-950 text-slate-950' 
+                      className={`flex items-center gap-2 px-4 py-3 text-xs font-bold transition border-b-2 cursor-pointer ${projectTab === tab.id
+                          ? 'border-slate-950 text-slate-950'
                           : 'border-transparent text-slate-400 hover:text-slate-700'
-                      }`}
+                        }`}
                     >
                       <Icon className="w-4 h-4" />
                       <span>{tab.label}</span>
@@ -696,19 +693,19 @@ export const EmployeeDashboard = () => {
                           <p className="text-[10px] text-slate-400">Review project architecture, wireframes, and design schemas. Click "AI Explain" to get a detailed breakdown.</p>
                         </div>
                       </div>
-                      
+
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                         {projectDetails.resources
                           .filter(r => r.resource_type === 'file' && ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(r.file_type?.toLowerCase()))
                           .map((img) => (
                             <div key={img.id} className="group border border-slate-100 rounded-2xl overflow-hidden hover:border-slate-300 transition-all duration-200 bg-slate-50/50 flex flex-col justify-between shadow-sm">
-                              <div 
+                              <div
                                 className="aspect-video w-full overflow-hidden bg-white cursor-pointer relative"
                                 onClick={() => setZoomImage(img)}
                               >
-                                <img 
-                                  src={`http://localhost:5000${img.file_path}`} 
-                                  alt={img.title} 
+                                <img
+                                  src={`http://localhost:5000${img.file_path}`}
+                                  alt={img.title}
                                   className="w-full h-full object-cover transition duration-300 group-hover:scale-105"
                                 />
                                 <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
@@ -718,13 +715,13 @@ export const EmployeeDashboard = () => {
                               <div className="p-3.5 space-y-2">
                                 <h5 className="font-bold text-xs text-slate-900 truncate">{img.title}</h5>
                                 <div className="flex gap-2">
-                                  <button 
+                                  <button
                                     onClick={() => setZoomImage(img)}
                                     className="flex-1 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-[9px] transition cursor-pointer text-center"
                                   >
                                     View
                                   </button>
-                                  <button 
+                                  <button
                                     onClick={() => handleExplainImageWithAI(img)}
                                     className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-[9px] transition cursor-pointer text-center flex items-center justify-center gap-1"
                                   >
@@ -805,13 +802,13 @@ export const EmployeeDashboard = () => {
                 <div className="space-y-6 animate-[fadeIn_0.15s_ease-out]">
                   <div className="bg-white border border-slate-200/80 rounded-3xl p-6 space-y-4">
                     <h3 className="font-extrabold text-slate-900 text-sm uppercase tracking-wider">Project Files & Document Links</h3>
-                    
+
                     {(() => {
-                      const filteredDocs = projectDetails.resources?.filter(r => 
-                        r.resource_type !== 'file' || 
+                      const filteredDocs = projectDetails.resources?.filter(r =>
+                        r.resource_type !== 'file' ||
                         !['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(r.file_type?.toLowerCase())
                       ) || [];
-                      
+
                       return filteredDocs.length === 0 ? (
                         <p className="text-xs text-slate-400 py-6 text-center">No document resources have been uploaded to this project folder yet.</p>
                       ) : (
@@ -819,50 +816,51 @@ export const EmployeeDashboard = () => {
                           {filteredDocs.map((res) => (
                             <div key={res.id} className="border border-slate-200/80 rounded-2xl p-4 flex items-center justify-between hover:border-slate-300 transition shadow-sm">
                               <div className="flex items-center gap-3">
-                              <span className="text-2xl">
-                                {res.resource_type === 'file' ? '📄' : res.resource_type === 'link' ? '🔗' : '✏️'}
-                              </span>
-                              <div className="text-left">
-                                <h4 className="font-extrabold text-slate-900 text-xs truncate max-w-xs">{res.title}</h4>
-                                <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold">
-                                  {res.resource_type === 'file' ? `${res.file_type} File` : res.resource_type}
+                                <span className="text-2xl">
+                                  {res.resource_type === 'file' ? '📄' : res.resource_type === 'link' ? '🔗' : '✏️'}
                                 </span>
+                                <div className="text-left">
+                                  <h4 className="font-extrabold text-slate-900 text-xs truncate max-w-xs">{res.title}</h4>
+                                  <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold">
+                                    {res.resource_type === 'file' ? `${res.file_type} File` : res.resource_type}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div>
+                                {res.resource_type === 'file' ? (
+                                  <a
+                                    href={`http://localhost:5000${res.file_path}`}
+                                    download
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="p-2 border border-slate-200 hover:border-slate-800 rounded-xl hover:bg-slate-50 transition cursor-pointer inline-flex items-center"
+                                  >
+                                    <Download className="w-3.5 h-3.5 text-slate-600" />
+                                  </a>
+                                ) : res.resource_type === 'link' ? (
+                                  <a
+                                    href={res.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="p-2 border border-slate-200 hover:border-slate-800 rounded-xl hover:bg-slate-50 transition cursor-pointer inline-flex items-center"
+                                  >
+                                    <ExternalLink className="w-3.5 h-3.5 text-slate-600" />
+                                  </a>
+                                ) : (
+                                  <button
+                                    onClick={() => toast(res.notes, { duration: 6000, icon: '✏️' })}
+                                    className="px-2.5 py-1.5 border border-slate-200 hover:border-slate-800 rounded-xl text-[10px] font-bold text-slate-600 transition cursor-pointer"
+                                  >
+                                    View Notes
+                                  </button>
+                                )}
                               </div>
                             </div>
-                            
-                            <div>
-                              {res.resource_type === 'file' ? (
-                                <a 
-                                  href={`http://localhost:5000${res.file_path}`} 
-                                  download 
-                                  target="_blank" 
-                                  rel="noreferrer"
-                                  className="p-2 border border-slate-200 hover:border-slate-800 rounded-xl hover:bg-slate-50 transition cursor-pointer inline-flex items-center"
-                                >
-                                  <Download className="w-3.5 h-3.5 text-slate-600" />
-                                </a>
-                              ) : res.resource_type === 'link' ? (
-                                <a 
-                                  href={res.url} 
-                                  target="_blank" 
-                                  rel="noreferrer"
-                                  className="p-2 border border-slate-200 hover:border-slate-800 rounded-xl hover:bg-slate-50 transition cursor-pointer inline-flex items-center"
-                                >
-                                  <ExternalLink className="w-3.5 h-3.5 text-slate-600" />
-                                </a>
-                              ) : (
-                                <button 
-                                  onClick={() => toast(res.notes, { duration: 6000, icon: '✏️' })}
-                                  className="px-2.5 py-1.5 border border-slate-200 hover:border-slate-800 rounded-xl text-[10px] font-bold text-slate-600 transition cursor-pointer"
-                                >
-                                  View Notes
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )})()}
+                          ))}
+                        </div>
+                      )
+                    })()}
                   </div>
                 </div>
               )}
@@ -870,7 +868,7 @@ export const EmployeeDashboard = () => {
               {/* SUBTAB 4: Embedded RAG Chat Assistant */}
               {projectTab === 'chat' && (
                 <div className="bg-white border border-slate-200/80 rounded-3xl overflow-hidden shadow-md h-[550px] flex flex-col justify-between animate-[fadeIn_0.15s_ease-out]">
-                  
+
                   {/* Chat header */}
                   <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                     <div className="flex items-center gap-2">
@@ -892,15 +890,13 @@ export const EmployeeDashboard = () => {
                     ) : (
                       (projectChats[selectedProject.id] || []).map((msg, i) => (
                         <div key={i} className={`flex items-start gap-2.5 max-w-xl ${msg.sender === 'user' ? 'ml-auto flex-row-reverse text-right' : 'mr-auto text-left'}`}>
-                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-[10px] border flex-shrink-0 ${
-                            msg.sender === 'user' ? 'bg-slate-950 text-white border-slate-900' : 'bg-white text-slate-900 border-slate-200'
-                          }`}>
+                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-[10px] border flex-shrink-0 ${msg.sender === 'user' ? 'bg-slate-950 text-white border-slate-900' : 'bg-white text-slate-900 border-slate-200'
+                            }`}>
                             {msg.sender === 'user' ? 'U' : 'AI'}
                           </div>
                           <div className="space-y-1 max-w-[85%]">
-                            <div className={`p-3 rounded-2xl text-xs border shadow-sm ${
-                              msg.sender === 'user' ? 'bg-slate-950 text-white border-slate-900' : 'bg-white text-slate-800 border-slate-200/50'
-                            }`}>
+                            <div className={`p-3 rounded-2xl text-xs border shadow-sm ${msg.sender === 'user' ? 'bg-slate-950 text-white border-slate-900' : 'bg-white text-slate-800 border-slate-200/50'
+                              }`}>
                               {msg.sender === 'user' ? <p className="font-medium whitespace-pre-wrap">{msg.text}</p> : renderMarkdown(msg.text)}
                             </div>
                             {msg.sender === 'ai' && (
@@ -914,7 +910,7 @@ export const EmployeeDashboard = () => {
                         </div>
                       ))
                     )}
-                    
+
                     {aiTyping && (
                       <div className="flex items-start gap-2.5 mr-auto text-left">
                         <div className="w-7 h-7 rounded-lg flex items-center justify-center border bg-white border-slate-200"><Sparkles className="w-3 h-3 text-purple-600 animate-pulse" /></div>
@@ -939,9 +935,9 @@ export const EmployeeDashboard = () => {
                     </div>
 
                     <div className="bg-slate-50 border border-slate-200 rounded-xl p-1.5 flex items-center gap-2 max-w-2xl mx-auto">
-                      <input 
-                        type="text" 
-                        placeholder="Query RAG documentation regarding this directory..." 
+                      <input
+                        type="text"
+                        placeholder="Query RAG documentation regarding this directory..."
                         value={chatInput}
                         onChange={(e) => setChatInput(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
@@ -964,7 +960,7 @@ export const EmployeeDashboard = () => {
           {/* TAB: AI Assistant Split-Pane Chat */}
           {activeTab === 'ai-assistant' && (
             <div className="flex flex-col lg:flex-row gap-6 items-stretch h-[calc(100vh-140px)] min-h-[580px] animate-[fadeIn_0.2s_ease-out]">
-              
+
               {/* 1. Left Panel: Select a Project */}
               <div className="w-full lg:w-[360px] bg-white border border-slate-200/80 rounded-3xl p-5 flex flex-col justify-between shadow-sm max-h-full">
                 <div className="flex flex-col h-full">
@@ -983,13 +979,12 @@ export const EmployeeDashboard = () => {
                       userProjects.map((proj) => {
                         const isSelected = selectedProjectChat?.id === proj.id;
                         return (
-                          <div 
+                          <div
                             key={proj.id}
-                            className={`p-4 border rounded-2xl transition-all flex flex-col gap-3 text-left ${
-                              isSelected 
-                                ? 'bg-emerald-50/15 border-emerald-500 shadow-sm ring-1 ring-emerald-500/20' 
+                            className={`p-4 border rounded-2xl transition-all flex flex-col gap-3 text-left ${isSelected
+                                ? 'bg-emerald-50/15 border-emerald-500 shadow-sm ring-1 ring-emerald-500/20'
                                 : 'bg-slate-50/50 border-slate-100 hover:bg-white hover:border-slate-300'
-                            }`}
+                              }`}
                           >
                             <div className="flex items-start gap-3">
                               <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 flex-shrink-0">
@@ -1014,9 +1009,8 @@ export const EmployeeDashboard = () => {
                               <p className="truncate">Stack: <span className="font-semibold text-slate-800 font-mono">{proj.tech_stack || 'N/A'}</span></p>
                               <div className="flex items-center gap-1">
                                 <span>Status:</span>
-                                <span className={`inline-block w-1.5 h-1.5 rounded-full ${
-                                  proj.status === 'Completed' || proj.status === 'Live' ? 'bg-emerald-500' : 'bg-amber-400'
-                                }`}></span>
+                                <span className={`inline-block w-1.5 h-1.5 rounded-full ${proj.status === 'Completed' || proj.status === 'Live' ? 'bg-emerald-500' : 'bg-amber-400'
+                                  }`}></span>
                                 <span className="font-semibold text-slate-800">{proj.status}</span>
                               </div>
                               <p>Assigned: <span className="font-semibold text-slate-800">{proj.assigned_date || 'Recent'}</span></p>
@@ -1029,7 +1023,7 @@ export const EmployeeDashboard = () => {
                                   🔒 Access Revoked
                                 </div>
                               ) : (
-                                <button 
+                                <button
                                   onClick={() => openProjectChat(proj)}
                                   className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[10px] font-extrabold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-sm shadow-emerald-600/10 animate-[pulse_3s_infinite]"
                                 >
@@ -1061,7 +1055,7 @@ export const EmployeeDashboard = () => {
                 ) : (
                   /* Active project chat session */
                   <div className="flex flex-col h-full justify-between overflow-hidden">
-                    
+
                     {/* Header */}
                     <div className="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/20 text-left">
                       <div className="flex items-center gap-3">
@@ -1093,7 +1087,7 @@ export const EmployeeDashboard = () => {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0 self-start sm:self-center">
-                        <button 
+                        <button
                           onClick={() => {
                             setSelectedProject(selectedProjectChat);
                             setProjectTab('overview');
@@ -1110,9 +1104,8 @@ export const EmployeeDashboard = () => {
                     <div className="flex-1 p-6 overflow-y-auto space-y-6 bg-slate-50/30 scrollbar-thin">
                       {(projectChats[selectedProjectChat.id] || []).map((msg, idx) => (
                         <div key={idx} className={`flex items-start gap-3 max-w-3xl ${msg.sender === 'user' ? 'ml-auto flex-row-reverse text-right' : 'mr-auto text-left'}`}>
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs flex-shrink-0 border ${
-                            msg.sender === 'user' ? 'bg-slate-950 text-white border-slate-900' : 'bg-emerald-50 text-emerald-900 border-emerald-100'
-                          }`}>
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs flex-shrink-0 border ${msg.sender === 'user' ? 'bg-slate-950 text-white border-slate-900' : 'bg-emerald-50 text-emerald-900 border-emerald-100'
+                            }`}>
                             {msg.sender === 'user' ? 'U' : (
                               <svg viewBox="0 0 24 24" fill="none" className="w-4.5 h-4.5 text-emerald-600 animate-[pulse_2.5s_infinite]">
                                 <rect x="4" y="9" width="16" height="11" rx="3" fill="#10b981" fillOpacity="0.15" stroke="#10b981" strokeWidth="1.5" />
@@ -1123,13 +1116,12 @@ export const EmployeeDashboard = () => {
                               </svg>
                             )}
                           </div>
-                          
+
                           <div className="space-y-1.5 max-w-[85%]">
-                            <div className={`p-4 rounded-2xl shadow-sm border ${
-                              msg.sender === 'user' ? 'bg-slate-950 text-white border-slate-900' : 'bg-white text-slate-800 border-slate-200/50'
-                            }`}>
+                            <div className={`p-4 rounded-2xl shadow-sm border ${msg.sender === 'user' ? 'bg-slate-950 text-white border-slate-900' : 'bg-white text-slate-800 border-slate-200/50'
+                              }`}>
                               {msg.sender === 'user' ? <p className="text-sm font-medium whitespace-pre-wrap">{msg.text}</p> : renderMarkdown(msg.text)}
-                              
+
                               {/* Structured Dev details card */}
                               {msg.sender === 'ai' && msg.isDevDetails && msg.devData && (
                                 <div className="mt-3.5 p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-4 text-xs text-slate-700 max-w-lg shadow-sm text-left animate-[fadeIn_0.15s_ease-out]">
@@ -1194,7 +1186,7 @@ export const EmployeeDashboard = () => {
 
                     {/* Footer suggested prompts & text inputs */}
                     <div className="p-4 border-t border-slate-100 bg-white space-y-3.5">
-                      
+
                       {/* Suggested prompts row */}
                       <div className="flex flex-wrap gap-1.5 justify-center max-w-4xl mx-auto">
                         {[
@@ -1204,9 +1196,9 @@ export const EmployeeDashboard = () => {
                           'API Flow',
                           'Who developed this?'
                         ].map((prompt) => (
-                          <button 
-                            key={prompt} 
-                            onClick={() => handleSendMessage(prompt)} 
+                          <button
+                            key={prompt}
+                            onClick={() => handleSendMessage(prompt)}
                             className="py-1.5 px-3 border border-slate-200 hover:border-slate-800 rounded-xl text-[10px] font-bold text-slate-600 hover:text-slate-900 transition cursor-pointer bg-slate-50/50 hover:bg-white shadow-sm"
                           >
                             💡 {prompt}
@@ -1216,15 +1208,15 @@ export const EmployeeDashboard = () => {
 
                       {/* Main chat input */}
                       <div className="bg-slate-50 border border-slate-200 rounded-2xl p-1.5 flex items-center gap-2 max-w-3xl mx-auto shadow-inner">
-                        <input 
-                          type="text" 
-                          placeholder="Ask about project structure, APIs, database, logic..." 
+                        <input
+                          type="text"
+                          placeholder="Ask about project structure, APIs, database, logic..."
                           value={chatInput}
                           onChange={(e) => setChatInput(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                           className="flex-1 bg-transparent px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none"
                         />
-                        <button 
+                        <button
                           onClick={() => handleSendMessage()}
                           className="w-9 h-9 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center cursor-pointer transition shadow-md shadow-emerald-600/10"
                         >
@@ -1234,7 +1226,7 @@ export const EmployeeDashboard = () => {
 
                       <div className="flex justify-between items-center max-w-3xl mx-auto pt-1 text-[10px] text-slate-400">
                         <span>AI responses are generated from project knowledge base and may not always be 100% accurate.</span>
-                        <button 
+                        <button
                           onClick={() => {
                             setProjectChats((prev) => ({
                               ...prev,
@@ -1276,7 +1268,7 @@ export const EmployeeDashboard = () => {
             <div className="space-y-6 text-left animate-[fadeIn_0.2s_ease-out]">
               <h2 className="text-xl font-black text-slate-950">My Profile Settings</h2>
               <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 max-w-2xl space-y-6 shadow-sm">
-                
+
                 {/* Profile Pic Upload section */}
                 <div className="flex flex-col sm:flex-row items-center gap-6 border-b border-slate-100 pb-6">
                   <div className="relative group">
@@ -1289,11 +1281,11 @@ export const EmployeeDashboard = () => {
                     </div>
                     <label className="absolute bottom-0 right-0 w-7 h-7 bg-slate-950 text-white rounded-full flex items-center justify-center cursor-pointer shadow-md hover:scale-105 transition-transform text-xs border-2 border-white">
                       📷
-                      <input 
-                        type="file" 
-                        accept="image/*" 
-                        onChange={handleProfilePicChange} 
-                        className="hidden" 
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleProfilePicChange}
+                        className="hidden"
                       />
                     </label>
                   </div>
@@ -1307,10 +1299,10 @@ export const EmployeeDashboard = () => {
                   </div>
                 </div>
 
-                {/* Visible/Invisible toggles for Email and Password */}
+                {/* Visible/Invisible toggles for Email */}
                 <div className="space-y-4">
                   <h4 className="font-bold text-xs uppercase tracking-wider text-slate-400">Account Credentials</h4>
-                  
+
                   {/* Email */}
                   <div className="space-y-1.5 text-left">
                     <span className="text-xs font-bold text-slate-700 block">Email Address</span>
@@ -1318,27 +1310,11 @@ export const EmployeeDashboard = () => {
                       <span className="text-xs font-medium font-mono text-slate-800">
                         {showEmail ? user?.email : '•••••••••••••••••••••'}
                       </span>
-                      <button 
-                        onClick={() => setShowEmail(!showEmail)} 
+                      <button
+                        onClick={() => setShowEmail(!showEmail)}
                         className="text-slate-400 hover:text-slate-800 transition cursor-pointer p-0.5"
                       >
                         {showEmail ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Password */}
-                  <div className="space-y-1.5 text-left">
-                    <span className="text-xs font-bold text-slate-700 block">Workspace Password</span>
-                    <div className="flex items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl max-w-md justify-between">
-                      <span className="text-xs font-medium font-mono text-slate-800">
-                        {showProfilePass ? 'ktai123' : '••••••••••'}
-                      </span>
-                      <button 
-                        onClick={() => setShowProfilePass(!showProfilePass)} 
-                        className="text-slate-400 hover:text-slate-800 transition cursor-pointer p-0.5"
-                      >
-                        {showProfilePass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
                   </div>
@@ -1347,22 +1323,16 @@ export const EmployeeDashboard = () => {
                 {/* Additional useful items */}
                 <div className="space-y-3 pt-4 border-t border-slate-100">
                   <h4 className="font-bold text-xs uppercase tracking-wider text-slate-400">Useful Information</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                    <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/50">
-                      <span className="text-slate-400 block font-bold text-[9px] uppercase tracking-wider">Designation</span>
-                      <span className="text-slate-800 font-bold mt-0.5 block">Associate Software Developer</span>
-                    </div>
-                    <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/50">
-                      <span className="text-slate-400 block font-bold text-[9px] uppercase tracking-wider">Department</span>
-                      <span className="text-slate-800 font-bold mt-0.5 block">Engineering / AI Research</span>
-                    </div>
-                    <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/50">
+                  <div className="text-xs">
+                    <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/50 text-left max-w-md">
                       <span className="text-slate-400 block font-bold text-[9px] uppercase tracking-wider">Join Date</span>
-                      <span className="text-slate-800 font-bold mt-0.5 block">July 21, 2026</span>
-                    </div>
-                    <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/50">
-                      <span className="text-slate-400 block font-bold text-[9px] uppercase tracking-wider">Reporting Senior Dev</span>
-                      <span className="text-slate-800 font-bold mt-0.5 block">Sathish Sharma (Lead Dev)</span>
+                      <span className="text-slate-800 font-bold mt-0.5 block">
+                        {user?.createdAt || user?.created_at ? new Date(user.createdAt || user.created_at).toLocaleDateString(undefined, {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        }) : 'N/A'}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -1380,12 +1350,12 @@ export const EmployeeDashboard = () => {
       {zoomImage && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 animate-[fadeIn_0.15s_ease-out]">
           <div className="bg-white rounded-3xl border border-slate-200/50 max-w-4xl w-full overflow-hidden shadow-2xl flex flex-col md:flex-row items-stretch">
-            
+
             {/* Image display */}
             <div className="flex-1 bg-slate-950 flex items-center justify-center min-h-[300px] p-2">
-              <img 
-                src={`http://localhost:5000${zoomImage.file_path}`} 
-                alt={zoomImage.title} 
+              <img
+                src={`http://localhost:5000${zoomImage.file_path}`}
+                alt={zoomImage.title}
                 className="max-h-[75vh] max-w-full object-contain rounded-xl"
               />
             </div>
@@ -1395,14 +1365,14 @@ export const EmployeeDashboard = () => {
               <div className="space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                   <h4 className="font-extrabold text-sm text-slate-900 truncate pr-4">{zoomImage.title}</h4>
-                  <button 
+                  <button
                     onClick={() => setZoomImage(null)}
                     className="p-1.5 hover:bg-slate-100 rounded-xl text-slate-500 hover:text-slate-900 transition cursor-pointer"
                   >
                     <X className="w-4 h-4" />
                   </button>
                 </div>
-                
+
                 <div className="space-y-1.5">
                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">File details</span>
                   <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 text-[11px] text-slate-600 font-mono space-y-1">
@@ -1421,7 +1391,7 @@ export const EmployeeDashboard = () => {
               </div>
 
               <div className="pt-4 border-t border-slate-100">
-                <button 
+                <button
                   onClick={() => {
                     setZoomImage(null);
                     handleExplainImageWithAI(zoomImage);

@@ -3,7 +3,7 @@ const pool = require('../config/db');
 exports.getAdminStats = async (req, res) => {
   try {
     // 1. Fetch registered employees
-    const [employees] = await pool.query("SELECT id, name, email, created_at FROM users WHERE role = 'employee'");
+    const [employees] = await pool.query("SELECT id, fullName AS name, email, createdAt AS created_at FROM users WHERE role = 'employee'");
     
     // 2. Fetch projects
     const [projects] = await pool.query("SELECT id, name, client, status, senior_dev_name, created_at FROM projects");

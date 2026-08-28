@@ -54,10 +54,13 @@ exports.login = async (req, res) => {
       data: {
         user: {
           id: user.id,
-          name: user.name,
+          fullName: user.fullName || user.name,
+          name: user.fullName || user.name, // compatibility
           email: user.email,
           role: user.role,
-          created_at: user.created_at
+          status: user.status || 'Active',
+          createdAt: user.createdAt || user.created_at,
+          updatedAt: user.updatedAt
         }
       }
     });
@@ -103,6 +106,21 @@ exports.registerEmployee = async (req, res) => {
       });
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Please provide a valid email address.'
+      });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Password must be at least 6 characters long.'
+      });
+    }
+
     // 2. Check if user already exists
     const [existing] = await pool.query('SELECT id FROM users WHERE email = ?', [email]);
     if (existing.length > 0) {
@@ -115,10 +133,10 @@ exports.registerEmployee = async (req, res) => {
     // 3. Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 4. Insert new employee
+    // 4. Insert new employee (NEVER store plain-text password for new employees)
     const [result] = await pool.query(
-      'INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)',
-      [name, email, hashedPassword, 'employee']
+      'INSERT INTO users (fullName, email, password, password_plain, role, status) VALUES (?, ?, ?, ?, ?, ?)',
+      [name, email, hashedPassword, null, 'employee', 'Active']
     );
 
     // 5. Send response
@@ -128,9 +146,11 @@ exports.registerEmployee = async (req, res) => {
       data: {
         user: {
           id: result.insertId,
-          name,
+          fullName: name,
+          name: name,
           email,
-          role: 'employee'
+          role: 'employee',
+          status: 'Active'
         }
       }
     });
@@ -140,6 +160,117 @@ exports.registerEmployee = async (req, res) => {
     res.status(500).json({
       status: 'error',
       message: 'Internal server error during employee registration.'
+    });
+  }
+};
+
+// Get all employees (Admin access only)
+exports.getAllEmployees = async (req, res) => {
+  try {
+    const [employees] = await pool.query(
+      'SELECT id, fullName, fullName AS name, email, role, status, createdAt, updatedAt FROM users WHERE role = "employee" ORDER BY fullName ASC'
+    );
+    res.status(200).json({
+      status: 'success',
+      data: { employees }
+    });
+  } catch (error) {
+    console.error("getAllEmployees error:", error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to fetch employees list.'
+    });
+  }
+};
+
+// Update an employee (Admin access only)
+exports.updateEmployee = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, fullName, email, password, status } = req.body;
+    const resolvedName = fullName || name;
+
+    if (!resolvedName || !email) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Name and email are required.'
+      });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Please provide a valid email address.'
+      });
+    }
+
+    // Check if email already in use by another user
+    const [existing] = await pool.query('SELECT id FROM users WHERE email = ? AND id != ?', [email, id]);
+    if (existing.length > 0) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'A user with this email address already exists.'
+      });
+    }
+
+    const updatedStatus = status || 'Active';
+
+    if (password && password.trim() !== '') {
+      if (password.length < 6) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Password must be at least 6 characters long.'
+        });
+      }
+      const hashedPassword = await bcrypt.hash(password, 10);
+      await pool.query(
+        'UPDATE users SET fullName = ?, email = ?, password = ?, password_plain = NULL, status = ? WHERE id = ? AND role = "employee"',
+        [resolvedName, email, hashedPassword, updatedStatus, id]
+      );
+    } else {
+      await pool.query(
+        'UPDATE users SET fullName = ?, email = ?, status = ? WHERE id = ? AND role = "employee"',
+        [resolvedName, email, updatedStatus, id]
+      );
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Employee updated successfully.'
+    });
+  } catch (error) {
+    console.error("updateEmployee error:", error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to update employee.'
+    });
+  }
+};
+
+// Delete an employee (Admin access only)
+exports.deleteEmployee = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const [result] = await pool.query('DELETE FROM users WHERE id = ? AND role = "employee"', [id]);
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Employee not found.'
+      });
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Employee deleted successfully.'
+    });
+  } catch (error) {
+    console.error("deleteEmployee error:", error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to delete employee.'
     });
   }
 };

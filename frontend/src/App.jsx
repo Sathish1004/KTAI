@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
 import EmployeeDashboard from './pages/EmployeeDashboard';
+import EmployeeList from './pages/EmployeeList';
 
 // Route protection for authenticated users
 const ProtectedRoute = ({ children }) => {
@@ -112,6 +113,18 @@ function App() {
               <ProtectedRoute>
                 <AdminRoute>
                   <AdminDashboard />
+                </AdminRoute>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Protected Admin Employee List Route */}
+          <Route
+            path="/admin/employees"
+            element={
+              <ProtectedRoute>
+                <AdminRoute>
+                  <EmployeeList />
                 </AdminRoute>
               </ProtectedRoute>
             }

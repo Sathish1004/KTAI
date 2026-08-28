@@ -39,6 +39,24 @@ export const authService = {
   registerEmployee: async (name, email, password) => {
     const response = await api.post('/api/auth/register-employee', { name, email, password });
     return response.data;
+  },
+
+  // Get all registered employees (Admin only)
+  getAllEmployees: async () => {
+    const response = await api.get('/api/auth/employees');
+    return response.data;
+  },
+
+  // Update employee details (Admin only)
+  updateEmployee: async (id, name, email, password, status) => {
+    const response = await api.put(`/api/auth/employee/${id}`, { name, email, password, status });
+    return response.data;
+  },
+
+  // Delete employee (Admin only)
+  deleteEmployee: async (id) => {
+    const response = await api.delete(`/api/auth/employee/${id}`);
+    return response.data;
   }
 };
 

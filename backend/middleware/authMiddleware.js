@@ -36,7 +36,7 @@ exports.protect = async (req, res, next) => {
 
     // 3. Check if user still exists in database
     const [users] = await pool.query(
-      'SELECT id, name, email, role, created_at FROM users WHERE id = ?',
+      'SELECT id, fullName, email, role, status, createdAt, updatedAt FROM users WHERE id = ?',
       [decoded.id]
     );
 
@@ -48,7 +48,10 @@ exports.protect = async (req, res, next) => {
     }
 
     // 4. Grant access and store user details in req.user
-    req.user = users[0];
+    req.user = {
+      ...users[0],
+      name: users[0].fullName
+    };
     next();
   } catch (error) {
     console.error("Auth middleware error:", error);
