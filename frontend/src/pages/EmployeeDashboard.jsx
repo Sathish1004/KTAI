@@ -175,12 +175,12 @@ export const EmployeeDashboard = () => {
         .find(r => q.includes(r.title.toLowerCase()) || q.includes(r.file_path.toLowerCase()));
 
       if (matchedImg) {
-        return `### AI Image Analysis: **${matchedImg.title}**\n- **Source URL**: \`http://localhost:5000${matchedImg.file_path}\`\n\n**Visual Layout Analysis**:\nThis diagram represents the system design layout for **"${projName}"** utilizing **${tech}** modules. It defines the component structures, data models, or UX flows to follow during onboarding. Let me know if you need specific details on any block inside this guide!`;
+        return `### AI Image Analysis: **${matchedImg.title}**\n- **Source URL**: \`${import.meta.env.VITE_API_URL}${matchedImg.file_path}\`\n\n**Visual Layout Analysis**:\nThis diagram represents the system design layout for **"${projName}"** utilizing **${tech}** modules. It defines the component structures, data models, or UX flows to follow during onboarding. Let me know if you need specific details on any block inside this guide!`;
       }
 
       const imgsList = projectDetails.resources
         ?.filter(r => r.resource_type === 'file' && ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(r.file_type?.toLowerCase()))
-        .map(r => `- **${r.title}** (URL: [View Image](http://localhost:5000${r.file_path}))`)
+        .map(r => `- **${r.title}** (URL: [View Image](${import.meta.env.VITE_API_URL}${r.file_path}))`)
         .join('\n');
       return `### Project Image Guides (${imgsCount})\nThe following visual assets are registered for **"${projName}"**:\n${imgsList}\n\n*Click "Explain with AI" on any visual asset in the Overview tab to get a dedicated breakdown!*`;
     }
@@ -704,7 +704,7 @@ export const EmployeeDashboard = () => {
                                 onClick={() => setZoomImage(img)}
                               >
                                 <img
-                                  src={`http://localhost:5000${img.file_path}`}
+                                  src={`${import.meta.env.VITE_API_URL}${img.file_path}`}
                                   alt={img.title}
                                   className="w-full h-full object-cover transition duration-300 group-hover:scale-105"
                                 />
@@ -830,7 +830,7 @@ export const EmployeeDashboard = () => {
                               <div>
                                 {res.resource_type === 'file' ? (
                                   <a
-                                    href={`http://localhost:5000${res.file_path}`}
+                                    href={`${import.meta.env.VITE_API_URL}${res.file_path}`}
                                     download
                                     target="_blank"
                                     rel="noreferrer"
@@ -1354,7 +1354,7 @@ export const EmployeeDashboard = () => {
             {/* Image display */}
             <div className="flex-1 bg-slate-950 flex items-center justify-center min-h-[300px] p-2">
               <img
-                src={`http://localhost:5000${zoomImage.file_path}`}
+                src={`${import.meta.env.VITE_API_URL}${zoomImage.file_path}`}
                 alt={zoomImage.title}
                 className="max-h-[75vh] max-w-full object-contain rounded-xl"
               />

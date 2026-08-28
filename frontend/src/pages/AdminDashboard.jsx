@@ -1433,7 +1433,7 @@ export const AdminDashboard = () => {
                       {existingProjImages.map((img) => (
                         <div key={img.id} className="relative group aspect-square rounded-xl overflow-hidden border border-slate-200 bg-white">
                           <img 
-                            src={`http://localhost:5000${img.file_path}`} 
+                            src={`${import.meta.env.VITE_API_URL}${img.file_path}`} 
                             alt={img.title} 
                             className="w-full h-full object-cover"
                           />
