@@ -34,7 +34,7 @@ app.get('/', (req, res) => {
 async function startServer() {
   try {
     await initDB();
-    app.listen(PORT, () => {
+    app.listen(PORT, '0.0.0.0', () => {
       console.log(`MyServer is running on port ${PORT}`);
     });
   } catch (error) {
